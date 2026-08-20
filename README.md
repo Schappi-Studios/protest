@@ -161,6 +161,25 @@ and every section after it. It tells you how many elements will go and asks
 before doing it. **UNDO BLOCK** brings the whole lot back, and there's a
 timestamped backup in `.backups/` either way.
 
+### Publishing
+
+**SAVE & PUBLISH** (⌘S) writes `index.html`, commits it, and pushes to GitHub.
+The live site rebuilds itself about a minute later, and a **VIEW LIVE** link
+appears in the toolbar.
+
+The **PUBLISH: ON / OFF** button controls this and remembers your choice. Turn
+it off and saving only writes to your own computer, so you can work on
+something rough without it going public.
+
+Nothing is ever lost when publishing fails. The file is written first, then
+committed, then pushed, and each stage reports separately: if the push fails
+you'll see "saved and committed, but the push failed" along with the reason.
+Fix the connection and press save again.
+
+Because publishing is instant and public, a save that removes more than about
+a third of the page's text asks for confirmation first. To undo something that
+already went live, edit it back and save again, or `git revert` the commit.
+
 ### The AI TELLS panel
 
 Click **AI TELLS** for a list of the habits that make writing read as

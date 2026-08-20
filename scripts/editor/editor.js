@@ -21,6 +21,8 @@
   let free = false;
   let rev = document.querySelector('meta[name="ed-rev"]')?.content || "";
   let autoPublish = localStorage.getItem("ed-publish") !== "off";
+  const loadedSize = () => main.textContent.replace(/\s+/g, " ").trim().length;
+  let baselineSize = 0;
 
   /* ---------------- editable regions ---------------- */
   const arm = () => {
@@ -132,6 +134,15 @@
   };
 
   const save = async () => {
+    // Publishing is instant and public, so a big cut gets one question first.
+    if (autoPublish && baselineSize) {
+      const now = loadedSize();
+      const lost = Math.round(((baselineSize - now) / baselineSize) * 100);
+      if (lost >= 35 && !confirm(
+        `This removes about ${lost}% of the page's text and publishes it to the ` +
+        `live site straight away.\n\nPublish anyway?`
+      )) return;
+    }
     saveBtn.disabled = true;
     status.textContent = autoPublish ? "saving and publishing…" : "saving…";
     status.className = "ed-note";
@@ -145,6 +156,7 @@
       if (!out.ok) throw new Error(out.error || "save failed");
       dirty = false;
       rev = out.rev || rev;
+      baselineSize = loadedSize();
       status.className = "ed-note";
 
       const pub = out.published;
@@ -804,6 +816,7 @@
   });
 
   try { document.execCommand("styleWithCSS", false, false); } catch {}
+  baselineSize = loadedSize();
   arm();
   renderPanel();
 })();

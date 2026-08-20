@@ -45,6 +45,7 @@ if (CONFIG.school) {
 /* ---------- theme toggle ---------- */
 (function theme() {
   const btn = $("themeBtn");
+  if (!btn) return;
   const saved = localStorage.getItem("theme");
   if (saved === "dark" || saved === "light") {
     document.documentElement.setAttribute("data-theme", saved);
@@ -70,6 +71,7 @@ const emptyRow = $("emptyRow");
 const countEl = $("count");
 
 function renderRoster(signatures) {
+  if (!roster) return;
   roster.replaceChildren();
   if (!signatures.length) {
     const li = document.createElement("li");
@@ -77,7 +79,7 @@ function renderRoster(signatures) {
     li.textContent =
       "No signatures yet. Someone has to be first — it may as well be the person who got told no.";
     roster.append(li);
-    countEl.textContent = "0";
+    if (countEl) countEl.textContent = "0";
     return;
   }
   const frag = document.createDocumentFragment();
@@ -93,10 +95,11 @@ function renderRoster(signatures) {
     frag.append(li);
   }
   roster.append(frag);
-  countEl.textContent = String(signatures.length);
+  if (countEl) countEl.textContent = String(signatures.length);
 }
 
 async function loadRoster() {
+  if (!roster || !countEl) return;
   try {
     const res = await fetch(CONFIG.signaturesUrl, { cache: "no-store" });
     if (!res.ok) throw new Error(res.status);
@@ -104,11 +107,12 @@ async function loadRoster() {
     const list = Array.isArray(data) ? data : data.signatures || [];
     renderRoster(list.filter((s) => s && s.name));
   } catch (err) {
+    if (!emptyRow) return;
     emptyRow.textContent =
       "Signature list couldn’t load. Reload the page — if it keeps failing, the roster is still in data/signatures.json.";
   }
 }
-loadRoster();
+if (roster) loadRoster();
 
 /* ---------- signing ---------- */
 const form = $("signForm");
@@ -116,6 +120,7 @@ const btn = $("signBtn");
 const statusEl = $("status");
 
 function say(msg, kind) {
+  if (!statusEl) return;
   statusEl.textContent = msg || "";
   statusEl.className = kind || "";
 }
@@ -140,7 +145,7 @@ function payload(name, group) {
   return base;
 }
 
-form.addEventListener("submit", async (e) => {
+if (form && btn) form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const url = endpoint();
@@ -148,13 +153,13 @@ form.addEventListener("submit", async (e) => {
     say("Signing isn't switched on yet — check back shortly.", "err");
     return;
   }
-  if ($("website").value) return; // honeypot: bots fill hidden fields
+  if ($("website")?.value) return; // honeypot: bots fill hidden fields
 
-  const name = $("nm").value.trim().replace(/\s+/g, " ");
-  const group = $("yr").value.trim().replace(/\s+/g, " ");
+  const name = ($("nm")?.value || "").trim().replace(/\s+/g, " ");
+  const group = ($("yr")?.value || "").trim().replace(/\s+/g, " ");
   if (!name) {
     say("Enter a name first.", "err");
-    $("nm").focus();
+    $("nm")?.focus();
     return;
   }
 
@@ -169,7 +174,7 @@ form.addEventListener("submit", async (e) => {
     const body = await res.json().catch(() => ({}));
     if (!res.ok || body.success === false) throw new Error(body.message || res.status);
 
-    form.querySelector(".row2").hidden = true;
+    const row = form.querySelector(".row2"); if (row) row.hidden = true;
     btn.hidden = true;
     say("Signed — thank you. Your name goes up at the next update.", "ok");
     if (window.goatcounter?.count) {
@@ -182,7 +187,7 @@ form.addEventListener("submit", async (e) => {
 });
 
 /* ---------- utilities ---------- */
-$("copyBtn").addEventListener("click", async function () {
+$("copyBtn")?.addEventListener("click", async function () {
   const text = $("emailTpl").textContent;
   try {
     await navigator.clipboard.writeText(text);
@@ -199,7 +204,7 @@ $("copyBtn").addEventListener("click", async function () {
   }
 });
 
-$("printBtn").addEventListener("click", () => window.print());
+$("printBtn")?.addEventListener("click", () => window.print());
 
 /* ---------- analytics (opt-in, cookieless) ---------- */
 if (CONFIG.goatcounterCode) {
