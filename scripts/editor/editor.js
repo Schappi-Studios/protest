@@ -150,7 +150,7 @@
       const res = await fetch("/__save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ main: clean(), rev, publish: autoPublish }),
+        body: JSON.stringify({ main: clean(), rev, publish: autoPublish, meta }),
       });
       const out = await res.json();
       if (!out.ok) throw new Error(out.error || "save failed");
@@ -326,6 +326,7 @@
     <button class="ed-b" data-add-open>+ ADD BLOCK</button>
     <button class="ed-b" id="ed-undo" disabled>UNDO BLOCK</button>
     <button class="ed-b" data-tells>AI TELLS <span id="ed-count">0</span></button>
+    <button class="ed-b" id="ed-share">LINK PREVIEW</button>
     <span class="sp"></span>
     <span class="ed-note" id="ed-status">click any text to edit</span>
     <a class="ed-b" id="ed-live" href="https://schappiplays.github.io/protest/" target="_blank" rel="noopener" hidden>VIEW LIVE</a>
@@ -351,6 +352,7 @@
   const addBtn = bar.querySelector("[data-add-open]");
   const undoBtn = bar.querySelector("#ed-undo");
   const pubBtn = bar.querySelector("#ed-pub");
+  const shareBtn = bar.querySelector("#ed-share");
   const liveLink = bar.querySelector("#ed-live");
 
   const paintPub = () => {
@@ -390,6 +392,7 @@
   });
 
   const togglePanel = (open) => {
+    if (open) share?.classList.remove("open"), shareBtn?.classList.remove("on");
     panel.classList.toggle("open", open);
     tellBtn.classList.toggle("on", open);
     if (open) renderPanel(); else paintHighlights([]);
@@ -761,6 +764,77 @@
     say(`removed ${n} elements below`);
   };
 
+  /* ---- share preview (what Discord, Slack and iMessage show) ---- */
+  const metaEl = (sel) => document.head.querySelector(sel);
+  const metaVal = (sel) => metaEl(sel)?.getAttribute("content") || "";
+
+  const meta = {
+    title: document.title,
+    description: metaVal('meta[name="description"]'),
+    ogTitle: metaVal('meta[property="og:title"]'),
+    ogDescription: metaVal('meta[property="og:description"]'),
+  };
+  const metaStart = JSON.stringify(meta);
+
+  const share = document.createElement("aside");
+  share.className = "ed-panel ed-share";
+  share.innerHTML = `
+    <h2>Link preview <span class="x" title="Close">&#10005;</span></h2>
+    <p class="ed-intro">What people see when this link is pasted into Discord, Slack,
+      Messages or a tweet. It comes from the page head, so editing the page itself
+      never changes it.</p>
+    <div class="ed-list">
+      <div class="ed-mock">
+        <img src="${metaVal('meta[property="og:image"]')}" alt="">
+        <div class="ed-mock-t"></div>
+        <div class="ed-mock-d"></div>
+      </div>
+      <label class="ed-f"><span>Preview headline</span>
+        <input id="m-ogt" maxlength="90"></label>
+      <label class="ed-f"><span>Preview text</span>
+        <textarea id="m-ogd" rows="3" maxlength="200"></textarea></label>
+      <label class="ed-f"><span>Browser tab title</span>
+        <input id="m-title" maxlength="70"></label>
+      <label class="ed-f"><span>Search-engine description</span>
+        <textarea id="m-desc" rows="3" maxlength="300"></textarea></label>
+      <p class="ed-intro" style="border:0">Discord remembers a preview for a while.
+        To force it to look again, paste the link with <code>?v=2</code> on the end.</p>
+    </div>`;
+  document.body.append(share);
+
+  const mOgt = share.querySelector("#m-ogt");
+  const mOgd = share.querySelector("#m-ogd");
+  const mTitle = share.querySelector("#m-title");
+  const mDesc = share.querySelector("#m-desc");
+  const mockT = share.querySelector(".ed-mock-t");
+  const mockD = share.querySelector(".ed-mock-d");
+
+  const paintMock = () => {
+    mockT.textContent = meta.ogTitle || "(no headline)";
+    mockD.textContent = meta.ogDescription || "(no text)";
+  };
+
+  const bindMeta = (el, key) => {
+    el.value = meta[key];
+    el.addEventListener("input", () => {
+      meta[key] = el.value;
+      paintMock();
+      if (JSON.stringify(meta) !== metaStart) markDirty();
+    });
+  };
+  bindMeta(mOgt, "ogTitle");
+  bindMeta(mOgd, "ogDescription");
+  bindMeta(mTitle, "title");
+  bindMeta(mDesc, "description");
+  paintMock();
+
+  const toggleShare = (open) => {
+    share.classList.toggle("open", open);
+    shareBtn.classList.toggle("on", open);
+    if (open) togglePanel(false);
+  };
+  share.querySelector(".x").addEventListener("click", () => toggleShare(false));
+
   /* ---- insert palette ---- */
   const palette = document.createElement("div");
   palette.className = "ed-add";
@@ -802,6 +876,7 @@
   };
 
   addBtn.addEventListener("click", () => togglePalette(!palette.classList.contains("open")));
+  shareBtn.addEventListener("click", () => toggleShare(!share.classList.contains("open")));
   undoBtn.addEventListener("click", undo);
   addEventListener("keydown", (e) => {
     if (e.key === "Escape") { togglePalette(false); locked = false; setActive(null); }

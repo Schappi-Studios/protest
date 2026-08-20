@@ -13,6 +13,7 @@ server only. The published page never loads it.
 import http.server
 import json
 import pathlib
+import re
 import shutil
 import socketserver
 import subprocess
@@ -78,6 +79,33 @@ def publish():
         return {"ok": False, "error": "git took too long — check your connection"}
     except Exception as exc:
         return {"ok": False, "error": str(exc)[:300]}
+
+
+META_FIELDS = {
+    "ogTitle": [('property', 'og:title'), ('name', 'twitter:title'), ('property', 'og:site_name')],
+    "ogDescription": [('property', 'og:description'), ('name', 'twitter:description')],
+    "description": [('name', 'description')],
+}
+
+
+def apply_meta(html: str, meta: dict) -> str:
+    """Rewrite the share-preview tags in <head>. Values are escaped for an attribute."""
+    def esc(v):
+        return (v.replace("&", "&amp;").replace('"', "&quot;")
+                 .replace("<", "&lt;").replace(">", "&gt;"))
+
+    if meta.get("title"):
+        html = re.sub(r"<title>[^<]*</title>",
+                      f"<title>{esc(meta['title'])}</title>", html, count=1)
+
+    for key, targets in META_FIELDS.items():
+        val = meta.get(key)
+        if not val:
+            continue
+        for attr, name in targets:
+            pat = re.compile(rf'(<meta {attr}="{re.escape(name)}" content=")[^"]*(")')
+            html = pat.sub(lambda m: m.group(1) + esc(val) + m.group(2), html, count=1)
+    return html
 
 
 def splice_main(original: str, new_inner: str) -> str:
@@ -155,7 +183,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
             shutil.copy2(INDEX, BACKUPS / f"index-{stamp}.html")
 
-            INDEX.write_text(splice_main(INDEX.read_text(encoding="utf-8"), inner), encoding="utf-8")
+            updated = splice_main(INDEX.read_text(encoding="utf-8"), inner)
+            if isinstance(payload.get("meta"), dict):
+                updated = apply_meta(updated, payload["meta"])
+            INDEX.write_text(updated, encoding="utf-8")
 
             result = {
                 "ok": True,

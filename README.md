@@ -180,6 +180,28 @@ Because publishing is instant and public, a save that removes more than about
 a third of the page's text asks for confirmation first. To undo something that
 already went live, edit it back and save again, or `git revert` the commit.
 
+### The link preview (Discord, Slack, Messages)
+
+What shows up when the link is pasted into a chat comes from `<head>`, not from
+the page body — so editing the page never changes it. **LINK PREVIEW** in the
+toolbar opens a panel with the four fields that matter and a live mock of the
+embed:
+
+- **Preview headline** — the big blue line
+- **Preview text** — the grey line under it
+- **Browser tab title** — what the tab and bookmarks say
+- **Search-engine description** — what Google shows
+
+Edit, then save like anything else.
+
+The picture is `assets/og.png`, 1200×630. To change it, replace that file and
+bump the `?v=` number on the `og:image` and `twitter:image` tags in
+`index.html` so the chat apps fetch the new one.
+
+**Discord caches previews.** After changing any of this, Discord may keep
+showing the old embed for hours. Paste the link with `?v=2` on the end to force
+a fresh look.
+
 ### The AI TELLS panel
 
 Click **AI TELLS** for a list of the habits that make writing read as
