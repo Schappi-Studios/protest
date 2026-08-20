@@ -10,6 +10,7 @@
 
   let dirty = false;
   let free = false;
+  let rev = document.querySelector('meta[name="ed-rev"]')?.content || "";
 
   /* ---------------- editable regions ---------------- */
   const arm = () => {
@@ -19,6 +20,7 @@
       el.contentEditable = free ? "inherit" : "true";
       el.spellcheck = true;
     });
+    main.querySelectorAll(BLOCK_SEL).forEach((el) => el.setAttribute("data-ed-block", ""));
     main.contentEditable = free ? "true" : "inherit";
     document.documentElement.classList.toggle("ed-free", free);
   };
@@ -105,7 +107,9 @@
       el.removeAttribute("contenteditable");
       el.removeAttribute("spellcheck");
     });
-    copy.querySelectorAll(".ed-flash").forEach((el) => el.classList.remove("ed-flash"));
+    copy.querySelectorAll(".ed-flash, .ed-active").forEach((el) =>
+      el.classList.remove("ed-flash", "ed-active"));
+    copy.querySelectorAll("[data-ed-block]").forEach((el) => el.removeAttribute("data-ed-block"));
     copy.querySelectorAll("[class='']").forEach((el) => el.removeAttribute("class"));
     // execCommand emits <b>/<i>; keep the source semantic.
     copy.querySelectorAll("b, i").forEach((el) => {
@@ -125,11 +129,12 @@
       const res = await fetch("/__save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ main: clean() }),
+        body: JSON.stringify({ main: clean(), rev }),
       });
       const out = await res.json();
       if (!out.ok) throw new Error(out.error || "save failed");
       dirty = false;
+      rev = out.rev || rev;
       status.textContent = `saved · backup in ${out.backup}`;
       status.className = "ed-note";
     } catch (err) {
@@ -278,6 +283,8 @@
     <button class="ed-b" data-clear title="Strip formatting">CLEAR</button>
     <span class="ed-sep"></span>
     <button class="ed-b" data-free title="Free mode lets you add and delete whole blocks">BLOCKS</button>
+    <button class="ed-b" data-add-open>+ ADD BLOCK</button>
+    <button class="ed-b" id="ed-undo" disabled>UNDO BLOCK</button>
     <button class="ed-b" data-tells>AI TELLS <span id="ed-count">0</span></button>
     <span class="sp"></span>
     <span class="ed-note" id="ed-status">click any text to edit</span>
@@ -298,6 +305,8 @@
   const tellBtn = bar.querySelector("[data-tells]");
   const tellCount = bar.querySelector("#ed-count");
   const freeBtn = bar.querySelector("[data-free]");
+  const addBtn = bar.querySelector("[data-add-open]");
+  const undoBtn = bar.querySelector("#ed-undo");
   const list = panel.querySelector("#ed-list");
 
   bar.querySelectorAll("[data-cmd]").forEach((b) =>
@@ -352,6 +361,236 @@
     if (k === "k") { e.preventDefault(); link(); }
     if (k === "h") { e.preventDefault(); wrapClass("hl"); }
   });
+
+
+  /* ================= structural blocks ================= */
+
+  const BLOCKS = [
+    { id: "section", name: "Section", desc: "A whole new numbered chunk of the page, with its own heading.",
+      sel: "section", parent: "main", where: "append",
+      html: `<section>
+      <div class="sec-hd">
+        <p class="eyebrow">08 &mdash; New section</p>
+        <h2>Give this section a heading</h2>
+      </div>
+      <div class="stack" style="gap:20px">
+        <p>Write the point here.</p>
+      </div>
+    </section>` },
+
+    { id: "card", name: "Box", desc: "The bordered white box, for anything that needs setting apart.",
+      sel: ".card", parent: "section .stack, section",
+      html: `<div class="card">
+        <h3 style="margin-bottom:12px">Heading for the box</h3>
+        <p style="font-size:16.5px">What goes in it.</p>
+      </div>` },
+
+    { id: "reb", name: "Objection + answer", desc: "A “they say / the problem with that” pair.",
+      sel: ".reb-row", parent: ".reb",
+      html: `<div class="reb-row">
+        <div class="reb-say"><span class="reb-lbl">They say</span>&ldquo;The thing they will say.&rdquo;</div>
+        <div class="reb-fact"><span class="reb-lbl">The problem with that</span>Why it does not hold up.</div>
+      </div>` },
+
+    { id: "demand", name: "Demand", desc: "A numbered item in the list of asks. Renumbers itself.",
+      sel: "ol.demands > li", parent: "ol.demands",
+      html: `<li>
+        <h3>The thing you want.</h3>
+        <p>Why it is reasonable, in two or three sentences.</p>
+      </li>` },
+
+    { id: "rung", name: "Escalation step", desc: "Another rung on the who-to-talk-to ladder.",
+      sel: "ol.ladder > li", parent: "ol.ladder",
+      html: `<li>
+        <h3>Who to go to</h3>
+        <p>What to say when you get there.</p>
+      </li>` },
+
+    { id: "scope", name: "Checklist line", desc: "A “we are not asking for…” line.",
+      sel: "ul.plain > li", parent: "ul.plain",
+      html: `<li><span class="x" aria-hidden="true">[&nbsp;]</span><span>Something you are not asking for.</span></li>` },
+
+    { id: "para", name: "Paragraph", desc: "Plain text.",
+      sel: "section > .stack > p, .card > p", parent: "section .stack, .card",
+      html: `<p>New paragraph.</p>` },
+
+    { id: "note", name: "Handwritten note", desc: "The red margin scrawl. Use sparingly or it stops landing.",
+      sel: ".note", parent: "section .stack, .card",
+      html: `<span class="note" style="transform:rotate(-1deg)">your note here</span>` },
+
+    { id: "btnrow", name: "Button row", desc: "A row to put buttons in.",
+      sel: ".btn-row", parent: "section .stack, .card",
+      html: `<div class="btn-row"><a class="btn" href="#sign">Button text</a></div>` },
+
+    { id: "btn", name: "Button — solid", desc: "Dark filled button. Goes in a button row.",
+      sel: "a.btn:not(.ghost)", parent: ".btn-row",
+      html: `<a class="btn" href="#sign">Button text</a>` },
+
+    { id: "btnghost", name: "Button — outline", desc: "Quieter bordered button, for the secondary action.",
+      sel: "a.btn.ghost", parent: ".btn-row",
+      html: `<a class="btn ghost" href="#demands">Button text</a>` },
+  ];
+
+  const BLOCK_SEL = BLOCKS.map((b) => b.sel).join(",") + ",figure.evidence,.petition";
+
+  const nameFor = (el) => {
+    for (const b of BLOCKS) if (el.matches(b.sel)) return b.name;
+    if (el.matches("figure.evidence")) return "Evidence";
+    if (el.matches(".petition")) return "Petition";
+    return "Block";
+  };
+
+  /* ---- structural undo ---- */
+  const undoStack = [];
+  const snapshot = () => {
+    undoStack.push(main.innerHTML);
+    if (undoStack.length > 30) undoStack.shift();
+    undoBtn.disabled = false;
+  };
+  const undo = () => {
+    if (!undoStack.length) return;
+    main.innerHTML = undoStack.pop();
+    undoBtn.disabled = !undoStack.length;
+    setActive(null);
+    arm();
+    markDirty();
+    if (panel.classList.contains("open")) renderPanel();
+  };
+
+  /* ---- selection + floating controls ---- */
+  let active = null;
+
+  const tools = document.createElement("div");
+  tools.className = "ed-bt";
+  tools.innerHTML = `
+    <span class="lbl" id="ed-bt-lbl">Block</span>
+    <button data-op="parent" title="Select the block around this one">&#8598;</button>
+    <button data-op="up" title="Move up">&#8593;</button>
+    <button data-op="down" title="Move down">&#8595;</button>
+    <button data-op="dupe" title="Duplicate">&#10697;</button>
+    <button data-op="link" title="Change where this links to">&#128279;</button>
+    <button data-op="del" class="del" title="Delete">&#10005;</button>`;
+  document.body.append(tools);
+
+  const place = () => {
+    if (!active || !active.isConnected) return setActive(null);
+    const r = active.getBoundingClientRect();
+    tools.style.top = `${Math.max(6, r.top - 32)}px`;
+    tools.style.left = `${Math.max(6, Math.min(r.right - tools.offsetWidth, innerWidth - tools.offsetWidth - 6))}px`;
+  };
+
+  const setActive = (el) => {
+    active?.classList.remove("ed-active");
+    active = el;
+    if (!el) return tools.classList.remove("show");
+    el.classList.add("ed-active");
+    tools.querySelector("#ed-bt-lbl").textContent = nameFor(el);
+    tools.querySelector('[data-op="link"]').style.display = el.matches("a") ? "" : "none";
+    tools.classList.add("show");
+    place();
+  };
+
+  main.addEventListener("mouseover", (e) => {
+    const b = e.target.closest(BLOCK_SEL);
+    if (b && main.contains(b) && b !== active) setActive(b);
+  });
+  addEventListener("scroll", place, { passive: true });
+  addEventListener("resize", place);
+
+  tools.addEventListener("click", (e) => {
+    const op = e.target.closest("[data-op]")?.dataset.op;
+    if (!op || !active) return;
+
+    if (op === "parent") {
+      const up = active.parentElement?.closest(BLOCK_SEL);
+      if (up && main.contains(up)) setActive(up);
+      return;
+    }
+    if (op === "link") {
+      const url = prompt("This button links to:", active.getAttribute("href") || "#");
+      if (url !== null) { snapshot(); active.setAttribute("href", url); markDirty(); }
+      return;
+    }
+
+    if (op === "up" || op === "down") {
+      const sib = op === "up" ? active.previousElementSibling : active.nextElementSibling;
+      if (!sib) return;
+      snapshot();
+      op === "up" ? sib.before(active) : sib.after(active);
+      markDirty(); place();
+      return;
+    }
+
+    if (op === "dupe") {
+      snapshot();
+      const copy = active.cloneNode(true);
+      copy.querySelectorAll("[data-ed], [data-ed-block]").forEach((el) => {
+        el.removeAttribute("data-ed"); el.removeAttribute("contenteditable");
+        el.removeAttribute("data-ed-block"); el.classList.remove("ed-active");
+      });
+      copy.removeAttribute("data-ed"); copy.removeAttribute("contenteditable");
+      copy.removeAttribute("data-ed-block"); copy.classList.remove("ed-active");
+      active.after(copy);
+      arm(); markDirty(); setActive(copy);
+      return;
+    }
+
+    if (op === "del") {
+      const label = nameFor(active);
+      const big = active.matches("section, .petition, figure.evidence");
+      if (big && !confirm(`Delete this whole ${label.toLowerCase()}? UNDO BLOCK will bring it back.`)) return;
+      snapshot();
+      const gone = active;
+      setActive(null);
+      gone.remove();
+      markDirty();
+      if (panel.classList.contains("open")) renderPanel();
+    }
+  });
+
+  /* ---- insert palette ---- */
+  const palette = document.createElement("div");
+  palette.className = "ed-add";
+  palette.innerHTML =
+    `<h3>Add a block</h3>` +
+    BLOCKS.map((b) => `<button data-add="${b.id}"><span class="n">${b.name}</span><span class="d">${b.desc}</span></button>`).join("");
+  document.body.append(palette);
+
+  palette.addEventListener("click", (e) => {
+    const id = e.target.closest("[data-add]")?.dataset.add;
+    if (!id) return;
+    const spec = BLOCKS.find((b) => b.id === id);
+    const tpl = document.createElement("template");
+    tpl.innerHTML = spec.html.trim();
+    const node = tpl.content.firstElementChild;
+
+    let placed = false;
+    if (active && active.matches(spec.sel)) {          // same kind: drop it in after
+      active.after(node); placed = true;
+    } else {
+      const host = active?.closest(spec.parent) || main.querySelector(spec.parent);
+      if (host) { host.append(node); placed = true; }
+    }
+    if (!placed) {
+      alert(`Nowhere to put a ${spec.name.toLowerCase()} yet. Hover the block you want it next to, then try again.`);
+      return;
+    }
+    snapshot();
+    arm(); markDirty(); togglePalette(false);
+    setActive(node);
+    node.scrollIntoView({ behavior: "smooth", block: "center" });
+    node.classList.add("ed-flash");
+    setTimeout(() => node.classList.remove("ed-flash"), 1200);
+  });
+
+  const togglePalette = (open) => {
+    palette.classList.toggle("open", open);
+    addBtn.classList.toggle("on", open);
+  };
+
+  addBtn.addEventListener("click", () => togglePalette(!palette.classList.contains("open")));
+  undoBtn.addEventListener("click", undo);
+  addEventListener("keydown", (e) => { if (e.key === "Escape") { togglePalette(false); setActive(null); } });
 
   try { document.execCommand("styleWithCSS", false, false); } catch {}
   arm();

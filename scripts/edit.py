@@ -69,7 +69,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
 
         if path in ("/", "/index.html"):
-            html = INDEX.read_text(encoding="utf-8").replace("</body>", INJECT + "</body>")
+            rev = str(INDEX.stat().st_mtime_ns)
+            stamp = f'<meta name="ed-rev" content="{rev}">\n'
+            html = INDEX.read_text(encoding="utf-8").replace("</body>", stamp + INJECT + "</body>")
             data = html.encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -92,13 +94,26 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if not isinstance(inner, str) or len(inner) < 200:
                 raise ValueError("refusing to save suspiciously small content")
 
+            rev = str(payload.get("rev", ""))
+            current = str(INDEX.stat().st_mtime_ns)
+            if rev and rev != current:
+                raise ValueError(
+                    "index.html changed on disk since this tab loaded it. "
+                    "Your text is still on screen — copy anything you need, "
+                    "then reload to get the newer file."
+                )
+
             BACKUPS.mkdir(exist_ok=True)
             stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
             shutil.copy2(INDEX, BACKUPS / f"index-{stamp}.html")
 
             INDEX.write_text(splice_main(INDEX.read_text(encoding="utf-8"), inner), encoding="utf-8")
 
-            body = json.dumps({"ok": True, "backup": f".backups/index-{stamp}.html"}).encode()
+            body = json.dumps({
+                "ok": True,
+                "backup": f".backups/index-{stamp}.html",
+                "rev": str(INDEX.stat().st_mtime_ns),
+            }).encode()
             self.send_response(200)
         except Exception as exc:  # report the reason back into the toolbar
             body = json.dumps({"ok": False, "error": str(exc)}).encode()

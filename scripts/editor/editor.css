@@ -86,3 +86,45 @@ body{padding-bottom:120px !important}
 ::highlight(ed-tell){background-color:#F3DE4A; color:#0F1520}
 
 @media print{.ed-bar,.ed-panel{display:none !important} body{padding-bottom:0 !important}}
+
+/* ---------- block controls ---------- */
+[data-ed-block]{position:relative}
+[data-ed-block].ed-active{outline:2px solid var(--ed-go); outline-offset:5px; border-radius:2px}
+.ed-bt{
+  position:fixed; z-index:2147483001; display:none; gap:2px;
+  background:var(--ed-bg); border:1px solid var(--ed-line); border-radius:3px; padding:3px;
+  box-shadow:0 6px 18px -8px #000;
+}
+.ed-bt.show{display:flex}
+.ed-bt button{
+  appearance:none; cursor:pointer; background:transparent; color:var(--ed-fg);
+  border:0; border-radius:2px; width:26px; height:24px; font-size:12px; line-height:1;
+  font-family:inherit; display:flex; align-items:center; justify-content:center;
+}
+.ed-bt button:hover{background:#2B323C}
+.ed-bt button.del:hover{background:var(--ed-hot); color:#fff}
+.ed-bt .lbl{
+  display:flex; align-items:center; padding:0 7px 0 5px; font-size:9.5px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ed-dim); border-right:1px solid var(--ed-line); margin-right:2px;
+  white-space:nowrap; max-width:130px; overflow:hidden;
+}
+
+/* ---------- insert palette ---------- */
+.ed-add{
+  position:fixed; bottom:56px; left:12px; z-index:2147483002; width:330px; max-width:92vw;
+  background:var(--ed-bg); border:1px solid var(--ed-line); border-radius:4px;
+  box-shadow:0 -12px 34px -14px #000; display:none; overflow:hidden;
+}
+.ed-add.open{display:block}
+.ed-add h3{
+  margin:0; padding:12px 14px; font-size:10.5px; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--ed-dim); border-bottom:1px solid var(--ed-line); font-family:inherit; font-weight:600;
+}
+.ed-add button{
+  display:block; width:100%; text-align:left; background:transparent; color:var(--ed-fg);
+  border:0; border-bottom:1px solid var(--ed-line); padding:10px 14px; cursor:pointer; font:inherit;
+}
+.ed-add button:last-child{border-bottom:0}
+.ed-add button:hover{background:#1B212A}
+.ed-add .n{display:block; font-size:12px}
+.ed-add .d{display:block; font-size:10px; color:var(--ed-dim); margin-top:3px; line-height:1.5}
