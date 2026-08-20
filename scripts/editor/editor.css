@@ -1,0 +1,88 @@
+/* Campaign site editor — injected by scripts/edit.py, never published. */
+
+:root{ --ed-bg:#14181F; --ed-fg:#E7EBF1; --ed-dim:#8C97A5; --ed-line:#2B323C;
+       --ed-hot:#FF5A6E; --ed-go:#5FD0A0; --ed-hl:#F3DE4A; }
+
+.ed-bar,.ed-panel{
+  font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  color:var(--ed-fg); background:var(--ed-bg); box-sizing:border-box;
+}
+.ed-bar *,.ed-panel *{box-sizing:border-box}
+
+/* ---------- toolbar ---------- */
+.ed-bar{
+  position:fixed; left:0; right:0; bottom:0; z-index:2147483000;
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  padding:9px 12px; border-top:1px solid var(--ed-line);
+  box-shadow:0 -10px 30px -20px #000;
+}
+.ed-bar .sp{flex:1}
+.ed-b{
+  appearance:none; cursor:pointer; background:transparent; color:var(--ed-fg);
+  border:1px solid var(--ed-line); border-radius:3px; padding:6px 10px;
+  font:inherit; font-size:11.5px; line-height:1; letter-spacing:.04em; white-space:nowrap;
+}
+.ed-b:hover{border-color:var(--ed-fg)}
+.ed-b:active{transform:translateY(1px)}
+.ed-b.on{background:var(--ed-fg); color:var(--ed-bg); border-color:var(--ed-fg)}
+.ed-b.go{background:var(--ed-go); color:#08130F; border-color:var(--ed-go); font-weight:700}
+.ed-b.go[disabled]{opacity:.4; cursor:not-allowed}
+.ed-b.warn{color:var(--ed-hot); border-color:var(--ed-hot)}
+.ed-b b{font-weight:800}
+.ed-b i{font-style:italic}
+.ed-b u{text-decoration:underline}
+.ed-b s{text-decoration:line-through}
+.ed-sep{width:1px; align-self:stretch; background:var(--ed-line); margin:0 4px}
+.ed-note{font-size:11px; color:var(--ed-dim); letter-spacing:.02em}
+.ed-note.dirty{color:var(--ed-hl)}
+.ed-note.bad{color:var(--ed-hot)}
+
+/* ---------- editable regions ---------- */
+[data-ed]{outline:1px dashed transparent; outline-offset:3px; border-radius:2px; transition:outline-color .12s}
+[data-ed]:hover{outline-color:rgba(176,13,36,.35)}
+[data-ed]:focus{outline:2px solid var(--ed-hot); outline-offset:3px}
+.ed-free main{outline:2px dashed var(--ed-hot); outline-offset:10px}
+.ed-flash{animation:ed-flash 1.1s ease-out}
+@keyframes ed-flash{from{background:var(--ed-hl)} to{background:transparent}}
+body{padding-bottom:120px !important}
+
+/* ---------- tells panel ---------- */
+.ed-panel{
+  position:fixed; top:0; right:0; bottom:0; width:340px; max-width:88vw; z-index:2147482999;
+  border-left:1px solid var(--ed-line); display:flex; flex-direction:column;
+  transform:translateX(102%); transition:transform .22s cubic-bezier(.2,.7,.3,1);
+}
+.ed-panel.open{transform:none}
+.ed-panel h2{
+  margin:0; padding:16px 16px 12px; font-size:12px; letter-spacing:.13em; text-transform:uppercase;
+  border-bottom:1px solid var(--ed-line); display:flex; align-items:center; gap:8px;
+}
+.ed-panel h2 .x{margin-left:auto; cursor:pointer; color:var(--ed-dim); font-size:15px}
+.ed-panel h2 .x:hover{color:var(--ed-fg)}
+.ed-intro{padding:12px 16px; font-size:11px; line-height:1.65; color:var(--ed-dim); border-bottom:1px solid var(--ed-line)}
+.ed-list{flex:1; overflow-y:auto; padding:4px 0}
+.ed-grp{border-bottom:1px solid var(--ed-line)}
+.ed-grp-h{
+  display:flex; align-items:baseline; gap:8px; padding:11px 16px; cursor:pointer;
+}
+.ed-grp-h:hover{background:#1B212A}
+.ed-grp-h .n{
+  font-size:12px; font-weight:600; min-width:26px; text-align:right;
+  font-variant-numeric:tabular-nums; color:var(--ed-hl);
+}
+.ed-grp-h .n.zero{color:var(--ed-go)}
+.ed-grp-h .t{font-size:11.5px}
+.ed-grp-h .why{display:block; font-size:10.5px; color:var(--ed-dim); margin-top:3px; line-height:1.5}
+.ed-hits{display:none; padding:0 16px 12px}
+.ed-grp.open .ed-hits{display:block}
+.ed-hit{
+  display:block; width:100%; text-align:left; background:#1B212A; color:var(--ed-fg);
+  border:1px solid var(--ed-line); border-radius:2px; padding:7px 9px; margin-top:6px;
+  font:inherit; font-size:10.5px; line-height:1.55; cursor:pointer;
+}
+.ed-hit:hover{border-color:var(--ed-hot)}
+.ed-hit mark{background:var(--ed-hl); color:#0F1520; padding:0 2px}
+.ed-empty{padding:14px 16px; font-size:11px; color:var(--ed-go); line-height:1.6}
+::highlight(ed-tell){background-color:#F3DE4A; color:#0F1520}
+
+@media print{.ed-bar,.ed-panel{display:none !important} body{padding-bottom:0 !important}}

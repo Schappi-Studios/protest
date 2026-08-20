@@ -4,3 +4,4 @@
 # original screenshots contain tabs/bookmarks — keep them out of the public repo
 shot-*.png
 Screenshot*.png
+.backups/

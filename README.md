@@ -84,6 +84,37 @@ If you move the repo or use a custom domain, update the four absolute URLs in
 `index.html`'s `<head>` (`og:url`, `og:image`, `twitter:image`, `canonical`) —
 social previews need absolute URLs and won't work with relative paths.
 
+## Editing the site without touching HTML
+
+```bash
+python3 scripts/edit.py
+```
+
+Opens http://localhost:4000 with an editing toolbar along the bottom. Click any
+text and type. The toolbar gives you **bold**, *italic*, underline, strike
+through, the yellow highlighter, the handwritten margin-note style, and links —
+with ⌘B / ⌘I / ⌘U / ⌘K / ⌘H as shortcuts.
+
+- **BLOCKS** mode (the default) lets you rewrite existing text. Enter makes a
+  line break, so you can't accidentally break the layout.
+- **FREE EDIT** makes the whole page editable, so you can add and delete whole
+  sections. More power, easier to make a mess.
+- **SAVE** (⌘S) writes straight back to `index.html` and drops a timestamped
+  copy of the previous version in `.backups/` first. Then commit and push.
+
+### The AI TELLS panel
+
+Click **AI TELLS** for a list of the habits that make writing read as
+machine-generated: em dashes, "it isn't X, it's Y" flips, three-item lists,
+"not just … but", words nobody says out loud, semicolons. Click a group to
+highlight every instance in the page, click a line to jump to it.
+
+It's a nagging tool, not a grader. A flag means "a person probably wouldn't
+have written it that way" — you decide. Getting the count to zero doesn't make
+the writing good, it just stops it sounding like it came out of a machine.
+
+The editor is injected by `scripts/edit.py` and never ships to the live site.
+
 ## Local preview
 
 ```bash
