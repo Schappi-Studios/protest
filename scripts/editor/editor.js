@@ -8,6 +8,15 @@
     "figcaption span", "pre.email", "td", "th", ".note",
   ].join(",");
 
+  const FONTS = [
+    ["", "Font"],
+    ["f-serif", "Serif (body)"],
+    ["f-sans", "Sans (headings)"],
+    ["f-mono", "Mono (labels)"],
+    ["f-hand", "Handwritten"],
+  ];
+  const STEPS = 11; // .s1 … .s11
+
   let dirty = false;
   let free = false;
   let rev = document.querySelector('meta[name="ed-rev"]')?.content || "";
@@ -282,6 +291,10 @@
     <button class="ed-b" data-link title="Link — ⌘K">LINK</button>
     <button class="ed-b" data-clear title="Strip formatting">CLEAR</button>
     <span class="ed-sep"></span>
+    <select class="ed-sel" data-font title="Typeface for the selected block"></select>
+    <button class="ed-b" data-size="-1" title="Smaller">A&minus;</button>
+    <button class="ed-b" data-size="1" title="Bigger">A+</button>
+    <span class="ed-sep"></span>
     <button class="ed-b" data-free title="Free mode lets you add and delete whole blocks">BLOCKS</button>
     <button class="ed-b" data-add-open>+ ADD BLOCK</button>
     <button class="ed-b" id="ed-undo" disabled>UNDO BLOCK</button>
@@ -301,6 +314,7 @@
   document.body.append(panel);
 
   const status = bar.querySelector("#ed-status");
+  const say = (msg) => { status.textContent = msg; status.className = "ed-note"; };
   const saveBtn = bar.querySelector("#ed-save");
   const tellBtn = bar.querySelector("[data-tells]");
   const tellCount = bar.querySelector("#ed-count");
@@ -314,6 +328,11 @@
   bar.querySelectorAll("[data-wrap]").forEach((b) =>
     b.addEventListener("click", () => wrapClass(b.dataset.wrap)));
   bar.querySelector("[data-link]").addEventListener("click", link);
+  const fontSel = bar.querySelector("[data-font]");
+  fontSel.innerHTML = FONTS.map(([v, n]) => `<option value="${v}">${n}</option>`).join("");
+  fontSel.addEventListener("change", () => { setFont(fontSel.value); fontSel.value = ""; });
+  bar.querySelectorAll("[data-size]").forEach((b) =>
+    b.addEventListener("click", () => stepSize(Number(b.dataset.size))));
   bar.querySelector("[data-clear]").addEventListener("click", clearFmt);
   saveBtn.addEventListener("click", save);
 
@@ -479,6 +498,8 @@
     <button data-op="up" title="Move up">&#8593;</button>
     <button data-op="down" title="Move down">&#8595;</button>
     <button data-op="dupe" title="Duplicate">&#10697;</button>
+    <button data-op="text" title="Add a paragraph below this">&#182;+</button>
+    <button data-op="below" class="del" title="Delete everything below this">&#8615;&#10005;</button>
     <button data-op="link" title="Change where this links to">&#128279;</button>
     <button data-op="del" class="del" title="Delete">&#10005;</button>`;
   document.body.append(tools);
@@ -579,6 +600,8 @@
       return;
     }
 
+    if (op === "text") return addTextAfter(active);
+    if (op === "below") return truncateAfter(active);
     if (op === "del") removeActive();
   });
 
@@ -598,6 +621,99 @@
     setActive(next && main.contains(next) ? next : null);
     if (panel.classList.contains("open")) renderPanel();
   }
+
+  /* ---- typography ---- */
+  // What the type controls act on: the pinned block, else whatever holds the caret.
+  const target = () => {
+    if (active && main.contains(active)) return active;
+    const sel = getSelection();
+    if (!sel.rangeCount) return null;
+    const node = sel.getRangeAt(0).commonAncestorContainer;
+    const el = node.nodeType === 1 ? node : node.parentElement;
+    return el?.closest(BLOCK_SEL) || null;
+  };
+
+  const setFont = (cls) => {
+    const el = target();
+    if (!el) return say("Click the text you want to change first.");
+    snapshot();
+    FONTS.forEach(([c]) => c && el.classList.remove(c));
+    if (cls) el.classList.add(cls);
+    markDirty();
+  };
+
+  const currentStep = (el) => {
+    for (let i = STEPS; i >= 1; i--) if (el.classList.contains(`s${i}`)) return i;
+    // No explicit step yet: find the rung closest to how it already renders.
+    const px = parseFloat(getComputedStyle(el).fontSize) || 18;
+    const scale = [12, 13.5, 15, 16.5, 18, 20, 24, 30, 38, 48, 62];
+    let best = 0;
+    scale.forEach((v, i) => {
+      if (Math.abs(v - px) < Math.abs(scale[best] - px)) best = i;
+    });
+    return best + 1;
+  };
+
+  const stepSize = (dir) => {
+    const el = target();
+    if (!el) return say("Click the text you want to resize first.");
+    const next = Math.min(STEPS, Math.max(1, currentStep(el) + dir));
+    snapshot();
+    for (let i = 1; i <= STEPS; i++) el.classList.remove(`s${i}`);
+    el.classList.add(`s${next}`);
+    el.style.removeProperty("font-size"); // beat any inline size left in the markup
+    markDirty();
+    place();
+    say(`size ${next} of ${STEPS}`);
+  };
+
+  /* ---- add a paragraph after a block ---- */
+  const addTextAfter = (el) => {
+    if (!el) return;
+    snapshot();
+    const para = document.createElement("p");
+    para.textContent = "New text.";
+    el.after(para);
+    arm();
+    markDirty();
+    setActive(para);
+    para.focus();
+    const r = document.createRange();
+    r.selectNodeContents(para);
+    const sel = getSelection();
+    sel.removeAllRanges();
+    sel.addRange(r);
+    para.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  /* ---- delete everything after a block ---- */
+  const countAfter = (el) => {
+    const all = [...main.querySelectorAll("*")];
+    const i = all.indexOf(el);
+    if (i < 0) return 0;
+    return all.slice(i + 1).filter((n) => !el.contains(n)).length;
+  };
+
+  const truncateAfter = (el) => {
+    if (!el || !main.contains(el)) return;
+    const n = countAfter(el);
+    if (!n) return say("Nothing below this to remove.");
+    if (!confirm(
+      `Delete everything below this ${nameFor(el).toLowerCase()}?\n\n` +
+      `That removes ${n} element${n === 1 ? "" : "s"}, including the rest of this section ` +
+      `and every section after it. UNDO BLOCK will bring it all back.`
+    )) return;
+    snapshot();
+    let node = el;
+    while (node && node !== main) {
+      while (node.nextSibling) node.nextSibling.remove();
+      node = node.parentElement;
+    }
+    markDirty();
+    setActive(el);
+    if (panel.classList.contains("open")) renderPanel();
+    say(`removed ${n} elements below`);
+  };
 
   /* ---- insert palette ---- */
   const palette = document.createElement("div");
@@ -643,6 +759,10 @@
   undoBtn.addEventListener("click", undo);
   addEventListener("keydown", (e) => {
     if (e.key === "Escape") { togglePalette(false); locked = false; setActive(null); }
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      addTextAfter(target());
+    }
     if ((e.metaKey || e.ctrlKey) && (e.key === "Backspace" || e.key === "Delete")) {
       e.preventDefault();
       removeActive();

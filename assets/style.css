@@ -118,6 +118,20 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(-
 .fields dd .bad{color:var(--denied); font-weight:600}
 .fields dd .ok{color:var(--allow); font-weight:600}
 
+/* ---------- typography utilities (set from the editor) ---------- */
+.f-sans{font-family:Archivo,"Helvetica Neue",Arial,sans-serif}
+.f-serif{font-family:"Source Serif 4",Georgia,"Times New Roman",serif}
+.f-mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.f-hand{font-family:Caveat,"Comic Sans MS",cursive; font-weight:700}
+
+.s1{font-size:12px}   .s2{font-size:13.5px} .s3{font-size:15px}
+.s4{font-size:16.5px} .s5{font-size:18px}   .s6{font-size:20px}
+.s7{font-size:24px}   .s8{font-size:30px}   .s9{font-size:38px}
+.s10{font-size:48px}  .s11{font-size:62px}
+.s8,.s9,.s10,.s11{line-height:1.08; letter-spacing:-.022em; text-wrap:balance}
+.s7{line-height:1.3}
+.f-hand.s1,.f-hand.s2,.f-hand.s3,.f-hand.s4{font-size:22px}
+
 /* ---------- evidence figure ---------- */
 .evidence{
   margin:0; background:var(--paper); border:1px solid var(--rule);

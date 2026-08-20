@@ -133,6 +133,34 @@ short so it never covers what you're about to remove.
 objection/answer pairs, demands, escalation rungs, checklist lines,
 paragraphs, notes, button rows and buttons.
 
+### Font and size
+
+The bottom bar has a **typeface picker** and **A− / A+**. Both act on the block
+you've clicked, or the one your cursor is sitting in.
+
+Four typefaces, matching the ones the site already uses: Serif (body text),
+Sans (headings), Mono (labels and codes), Handwritten (the red margin notes).
+
+A− / A+ move through eleven sizes, from 12px caption up to 62px headline. The
+first press works out the nearest size to how the text already looks, so
+stepping never jumps somewhere unexpected. Big sizes automatically tighten
+their line spacing and letter spacing so headlines don't look loose.
+
+These are real classes (`.f-hand`, `.s9`) defined in `assets/style.css`, not
+inline styles, so the page stays consistent and you can restyle everything at
+once by editing the class instead of hunting through the markup.
+
+### Adding text and cutting the page down
+
+**¶+** on the block toolbar drops a new paragraph directly below that block and
+puts the cursor in it, ready to type. **⌘Enter** does the same from wherever you
+are.
+
+**⇩✕** deletes *everything below* that block — the rest of the section it's in
+and every section after it. It tells you how many elements will go and asks
+before doing it. **UNDO BLOCK** brings the whole lot back, and there's a
+timestamped backup in `.backups/` either way.
+
 ### The AI TELLS panel
 
 Click **AI TELLS** for a list of the habits that make writing read as
