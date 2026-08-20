@@ -143,3 +143,6 @@ span.note[data-ed-block].ed-active,a.btn[data-ed-block].ed-active{outline-offset
 }
 .ed-sel:hover{border-color:var(--ed-fg)}
 .ed-sel option{background:var(--ed-bg); color:var(--ed-fg)}
+
+#ed-live{color:var(--ed-go); border-color:var(--ed-go); text-decoration:none}
+#ed-live:hover{background:var(--ed-go); color:#08130F}

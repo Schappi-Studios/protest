@@ -15,6 +15,7 @@ import json
 import pathlib
 import shutil
 import socketserver
+import subprocess
 import sys
 import webbrowser
 from datetime import datetime
@@ -25,11 +26,58 @@ EDITOR = ROOT / "scripts" / "editor"
 INDEX = ROOT / "index.html"
 BACKUPS = ROOT / ".backups"
 PORT = 4000
+LIVE_URL = "https://schappiplays.github.io/protest/"
 
 INJECT = (
     '<link rel="stylesheet" href="/__editor/editor.css">\n'
     '<script src="/__editor/editor.js" defer></script>\n'
 )
+
+
+def git(*args, timeout=90):
+    return subprocess.run(
+        ["git", "-C", str(ROOT), *args], capture_output=True, text=True, timeout=timeout
+    )
+
+
+def publish():
+    """Commit whatever changed and push it. Never raises — the caller reports."""
+    try:
+        name = git("config", "user.name").stdout.strip() or "SchappiPlays"
+        email = git("config", "user.email").stdout.strip() or "marcus@chickcom.com"
+
+        if git("add", "-A").returncode:
+            return {"ok": False, "error": "git add failed"}
+
+        if not git("status", "--porcelain").stdout.strip():
+            # File written but identical to what is already committed.
+            ahead = git("rev-list", "--count", "@{u}..HEAD").stdout.strip()
+            if ahead and ahead != "0":
+                pushed = git("push", "origin", "HEAD")
+                if pushed.returncode:
+                    return {"ok": False, "error": pushed.stderr.strip()[:300]}
+                return {"ok": True, "url": LIVE_URL}
+            return {"ok": True, "note": "no change to publish"}
+
+        committed = git(
+            "-c", f"user.name={name}", "-c", f"user.email={email}",
+            "commit", "-m", "Update the campaign page",
+        )
+        if committed.returncode:
+            return {"ok": False, "error": (committed.stderr or committed.stdout).strip()[:300]}
+
+        pushed = git("push", "origin", "HEAD")
+        if pushed.returncode:
+            return {
+                "ok": False,
+                "committed": True,
+                "error": (pushed.stderr or pushed.stdout).strip()[:300],
+            }
+        return {"ok": True, "url": LIVE_URL}
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "git took too long — check your connection"}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)[:300]}
 
 
 def splice_main(original: str, new_inner: str) -> str:
@@ -109,11 +157,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
             INDEX.write_text(splice_main(INDEX.read_text(encoding="utf-8"), inner), encoding="utf-8")
 
-            body = json.dumps({
+            result = {
                 "ok": True,
                 "backup": f".backups/index-{stamp}.html",
                 "rev": str(INDEX.stat().st_mtime_ns),
-            }).encode()
+            }
+            if payload.get("publish"):
+                result["published"] = publish()
+                # publishing commits the file, which does not alter it on disk,
+                # but re-read the revision so the tab stays in sync either way
+                result["rev"] = str(INDEX.stat().st_mtime_ns)
+            body = json.dumps(result).encode()
             self.send_response(200)
         except Exception as exc:  # report the reason back into the toolbar
             body = json.dumps({"ok": False, "error": str(exc)}).encode()

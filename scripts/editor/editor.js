@@ -20,6 +20,7 @@
   let dirty = false;
   let free = false;
   let rev = document.querySelector('meta[name="ed-rev"]')?.content || "";
+  let autoPublish = localStorage.getItem("ed-publish") !== "off";
 
   /* ---------------- editable regions ---------------- */
   const arm = () => {
@@ -132,20 +133,34 @@
 
   const save = async () => {
     saveBtn.disabled = true;
-    status.textContent = "saving…";
+    status.textContent = autoPublish ? "saving and publishing…" : "saving…";
     status.className = "ed-note";
     try {
       const res = await fetch("/__save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ main: clean(), rev }),
+        body: JSON.stringify({ main: clean(), rev, publish: autoPublish }),
       });
       const out = await res.json();
       if (!out.ok) throw new Error(out.error || "save failed");
       dirty = false;
       rev = out.rev || rev;
-      status.textContent = `saved · backup in ${out.backup}`;
       status.className = "ed-note";
+
+      const pub = out.published;
+      if (!pub) {
+        status.textContent = "saved on this computer only";
+      } else if (pub.ok && pub.note) {
+        status.textContent = "saved · nothing new to publish";
+      } else if (pub.ok) {
+        status.textContent = "published · live in about a minute";
+        liveLink.hidden = false;
+      } else {
+        status.textContent = pub.committed
+          ? `saved and committed, but the push failed: ${pub.error}`
+          : `saved on this computer, but publishing failed: ${pub.error}`;
+        status.className = "ed-note bad";
+      }
     } catch (err) {
       status.textContent = `not saved: ${err.message}`;
       status.className = "ed-note bad";
@@ -301,6 +316,8 @@
     <button class="ed-b" data-tells>AI TELLS <span id="ed-count">0</span></button>
     <span class="sp"></span>
     <span class="ed-note" id="ed-status">click any text to edit</span>
+    <a class="ed-b" id="ed-live" href="https://schappiplays.github.io/protest/" target="_blank" rel="noopener" hidden>VIEW LIVE</a>
+    <button class="ed-b" id="ed-pub" title="When on, saving also commits and pushes to the live site">PUBLISH: ON</button>
     <button class="ed-b go" id="ed-save" disabled>SAVE</button>`;
   document.body.append(bar);
 
@@ -321,6 +338,23 @@
   const freeBtn = bar.querySelector("[data-free]");
   const addBtn = bar.querySelector("[data-add-open]");
   const undoBtn = bar.querySelector("#ed-undo");
+  const pubBtn = bar.querySelector("#ed-pub");
+  const liveLink = bar.querySelector("#ed-live");
+
+  const paintPub = () => {
+    pubBtn.textContent = autoPublish ? "PUBLISH: ON" : "PUBLISH: OFF";
+    pubBtn.classList.toggle("on", autoPublish);
+    saveBtn.textContent = autoPublish ? "SAVE & PUBLISH" : "SAVE";
+  };
+  pubBtn.addEventListener("click", () => {
+    autoPublish = !autoPublish;
+    localStorage.setItem("ed-publish", autoPublish ? "on" : "off");
+    paintPub();
+    say(autoPublish
+      ? "saving will now push straight to the live site"
+      : "saving now only writes to this computer");
+  });
+  paintPub();
   const list = panel.querySelector("#ed-list");
 
   bar.querySelectorAll("[data-cmd]").forEach((b) =>
