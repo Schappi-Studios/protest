@@ -15,9 +15,10 @@ Everything configurable lives at the top of [`assets/app.js`](assets/app.js):
 
 ```js
 const CONFIG = {
-  school:          "",   // 1. your school's name
-  formEndpoint:    "",   // 2. where the sign-up form posts
-  externalFormUrl: "",   // 2b. or a Google/Microsoft Form link
+  school:          "",           // 1. your school's name
+  signupProvider:  "web3forms",  // 2. "web3forms" | "formspree" | ""
+  signupKey:       "",           //    the access key or endpoint
+  goatcounterCode: "",           // 3. optional cookieless analytics
   signaturesUrl:   "data/signatures.json",
 };
 ```
@@ -30,19 +31,33 @@ Leave it empty and the blanks stay visible, which is fine while you're still dra
 ### 2. Collecting signatures — pick one
 
 GitHub Pages is static hosting: there's no server, so the page can't store a
-signature by itself. Two options, both free:
+signature by itself. Both options below are free, keep people on the site, and
+are owned by neither Microsoft nor Google.
 
-**a) Formspree (stays in-page, nicest)**
+**a) Web3Forms (recommended — unlimited, free)**
+1. Go to [web3forms.com](https://web3forms.com), enter your email, get an access key
+   (no account to create)
+2. `signupProvider: "web3forms"` and paste the key into `signupKey`
+3. Signatures arrive in your inbox
+
+**b) Formspree**
 1. Sign up at [formspree.io](https://formspree.io), create a form
-2. Copy the endpoint (`https://formspree.io/f/xxxxxxxx`) into `formEndpoint`
-3. Submissions land in your inbox / Formspree dashboard
+2. `signupProvider: "formspree"` and paste the full endpoint
+   (`https://formspree.io/f/xxxxxxxx`) into `signupKey`
+3. Free tier is 50 submissions/month
 
-Free tier is 50 submissions/month. Fine for a school; if it fills up, switch to (b).
+Set `signupProvider: ""` to switch signing off entirely.
 
-**b) Google Forms or Microsoft Forms (unlimited)**
-1. Make a form with two questions: Name, Year/class
-2. Paste its public link into `externalFormUrl` and leave `formEndpoint` empty
-3. The sign button now sends people to that form
+### 2c. Analytics — optional
+
+`goatcounterCode` loads [GoatCounter](https://www.goatcounter.com): free for
+non-commercial use, open source, **no cookies and no personal data**, so the site
+needs no consent banner. Sign up, then put your site code (the `yourcode` in
+`yourcode.goatcounter.com`) in `CONFIG.goatcounterCode`. Leave it `""` and no
+analytics script loads at all.
+
+Deliberately not Google Analytics: it sets cookies, needs a consent banner, and
+hands a privacy argument to the people you're arguing with.
 
 ### 3. Publishing signatures
 

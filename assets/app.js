@@ -5,21 +5,28 @@
 
 const CONFIG = {
   // 1. Your school's name. Fills every "SCHOOL NAME" blank on the page.
-  //    Leave as "" to keep the blanks showing (useful before you go public).
+  //    Leave "" to keep the blanks showing while you're still drafting.
   school: "",
 
-  // 2. Where the sign-up form posts. Pick ONE:
-  //    a) Formspree  — free, 2 min: formspree.io → new form → paste the
-  //       endpoint here, e.g. "https://formspree.io/f/xxxxxxxx"
-  //    b) Leave "" and set externalFormUrl below to use Google/Microsoft Forms.
-  formEndpoint: "",
+  // 2. Signature collection. Both options are free, in-page (nobody leaves
+  //    the site), and owned by neither Microsoft nor Google.
+  //
+  //    "web3forms" — unlimited submissions, free. Get an access key emailed
+  //                  to you at web3forms.com (no account needed). Recommended.
+  //    "formspree" — 50 submissions/month free. Put the full endpoint
+  //                  ("https://formspree.io/f/xxxxxxxx") in `key`.
+  //    ""          — signing switched off.
+  signupProvider: "web3forms",
+  signupKey: "",
 
-  // 2b. A Google Form / Microsoft Form URL. If set (and formEndpoint is empty),
-  //     the sign button sends people there instead of posting in-page.
-  externalFormUrl: "",
+  // 3. Analytics. GoatCounter: free for non-commercial use, open source,
+  //    no cookies, no personal data, so no consent banner is required —
+  //    which matters when your whole argument is about doing policy properly.
+  //    Sign up at goatcounter.com, then put your site code here (the
+  //    "yourcode" in yourcode.goatcounter.com). Leave "" to load nothing.
+  goatcounterCode: "",
 
-  // 3. Where the public roster is read from. Add approved names to this file
-  //    and commit — see scripts/sign.py, or just edit it by hand.
+  // 4. Where the public roster is read from.
   signaturesUrl: "data/signatures.json",
 };
 
@@ -113,17 +120,32 @@ function say(msg, kind) {
   statusEl.className = kind || "";
 }
 
-if (!CONFIG.formEndpoint && CONFIG.externalFormUrl) {
-  btn.type = "button";
-  btn.textContent = "Sign the petition →";
-  btn.addEventListener("click", () => window.open(CONFIG.externalFormUrl, "_blank", "noopener"));
-  for (const f of form.querySelectorAll(".row2, .hp")) f.hidden = true;
+function endpoint() {
+  if (!CONFIG.signupKey) return null;
+  if (CONFIG.signupProvider === "web3forms") return "https://api.web3forms.com/submit";
+  if (CONFIG.signupProvider === "formspree") return CONFIG.signupKey;
+  return null;
+}
+
+function payload(name, group) {
+  const base = { name, group, page: location.href };
+  if (CONFIG.signupProvider === "web3forms") {
+    return {
+      access_key: CONFIG.signupKey,
+      subject: `Petition signature: ${name}`,
+      from_name: "The Copilot Exception",
+      ...base,
+    };
+  }
+  return base;
 }
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (!CONFIG.formEndpoint) {
-    say("Signing isn’t switched on yet — check back shortly.", "err");
+
+  const url = endpoint();
+  if (!url) {
+    say("Signing isn't switched on yet — check back shortly.", "err");
     return;
   }
   if ($("website").value) return; // honeypot: bots fill hidden fields
@@ -139,18 +161,23 @@ form.addEventListener("submit", async (e) => {
   btn.disabled = true;
   say("Sending…");
   try {
-    const res = await fetch(CONFIG.formEndpoint, {
+    const res = await fetch(url, {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({ name, group, page: location.href }),
+      body: JSON.stringify(payload(name, group)),
     });
-    if (!res.ok) throw new Error(res.status);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || body.success === false) throw new Error(body.message || res.status);
+
     form.querySelector(".row2").hidden = true;
     btn.hidden = true;
     say("Signed — thank you. Your name goes up at the next update.", "ok");
+    if (window.goatcounter?.count) {
+      window.goatcounter.count({ path: "signed", title: "Petition signature", event: true });
+    }
   } catch (err) {
     btn.disabled = false;
-    say("That didn’t send. Check your connection and try again.", "err");
+    say("That didn't send. Check your connection and try again.", "err");
   }
 });
 
@@ -173,3 +200,12 @@ $("copyBtn").addEventListener("click", async function () {
 });
 
 $("printBtn").addEventListener("click", () => window.print());
+
+/* ---------- analytics (opt-in, cookieless) ---------- */
+if (CONFIG.goatcounterCode) {
+  const gc = document.createElement("script");
+  gc.async = true;
+  gc.dataset.goatcounter = `https://${CONFIG.goatcounterCode}.goatcounter.com/count`;
+  gc.src = "https://gc.zgo.at/count.js";
+  document.head.append(gc);
+}
