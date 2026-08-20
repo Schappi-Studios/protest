@@ -89,7 +89,9 @@ body{padding-bottom:120px !important}
 
 /* ---------- block controls ---------- */
 [data-ed-block]{position:relative}
-[data-ed-block].ed-active{outline:2px solid var(--ed-go); outline-offset:5px; border-radius:2px}
+[data-ed-block].ed-active{outline:2px solid var(--ed-go); outline-offset:3px; border-radius:2px}
+/* inline bits need the outline tight or it swallows the line above */
+span.note[data-ed-block].ed-active,a.btn[data-ed-block].ed-active{outline-offset:2px}
 .ed-bt{
   position:fixed; z-index:2147483001; display:none; gap:2px;
   background:var(--ed-bg); border:1px solid var(--ed-line); border-radius:3px; padding:3px;
@@ -102,7 +104,11 @@ body{padding-bottom:120px !important}
   font-family:inherit; display:flex; align-items:center; justify-content:center;
 }
 .ed-bt button:hover{background:#2B323C}
+.ed-bt button.del{border-left:1px solid var(--ed-line); margin-left:2px; width:30px; color:var(--ed-hot)}
 .ed-bt button.del:hover{background:var(--ed-hot); color:#fff}
+.ed-bt.pinned{border-color:var(--ed-go)}
+.ed-bt.pinned .lbl{color:var(--ed-go)}
+.ed-bt.pinned .lbl::before{content:"\25CF\00a0"; font-size:8px; vertical-align:middle}
 .ed-bt .lbl{
   display:flex; align-items:center; padding:0 7px 0 5px; font-size:9.5px; letter-spacing:.1em;
   text-transform:uppercase; color:var(--ed-dim); border-right:1px solid var(--ed-line); margin-right:2px;

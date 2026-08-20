@@ -102,6 +102,37 @@ with ⌘B / ⌘I / ⌘U / ⌘K / ⌘H as shortcuts.
 - **SAVE** (⌘S) writes straight back to `index.html` and drops a timestamped
   copy of the previous version in `.backups/` first. Then commit and push.
 
+### Adding and removing blocks
+
+Hover any box, paragraph, note or button and a small toolbar appears next to it.
+The label on the left tells you what it's about to act on, so you always know
+what you're deleting.
+
+| Control | Does |
+|---|---|
+| ↖ | select the block *containing* this one |
+| ↑ ↓ | move it up or down past its siblings |
+| ⧉ | duplicate it |
+| 🔗 | change a button's link (buttons only) |
+| ✕ | delete it |
+
+**Click a block to pin it.** A pinned block turns the toolbar green and stops
+the selection jumping around while you move the mouse over to the buttons.
+Escape unpins.
+
+**⌘⌫ deletes the pinned block.** After a delete the selection lands on the
+neighbouring block, so you can hold ⌘ and clear several in a row without
+re-aiming. Deleting anything large asks first, and **UNDO BLOCK** brings back
+the last thing you removed.
+
+Small things — single paragraphs, handwritten notes, individual buttons — are
+selectable in their own right, and the toolbar moves to the side of anything
+short so it never covers what you're about to remove.
+
+**+ ADD BLOCK** inserts next to whatever is selected: sections, boxes,
+objection/answer pairs, demands, escalation rungs, checklist lines,
+paragraphs, notes, button rows and buttons.
+
 ### The AI TELLS panel
 
 Click **AI TELLS** for a list of the habits that make writing read as

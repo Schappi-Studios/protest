@@ -431,12 +431,23 @@
       html: `<a class="btn ghost" href="#demands">Button text</a>` },
   ];
 
-  const BLOCK_SEL = BLOCKS.map((b) => b.sel).join(",") + ",figure.evidence,.petition";
+  const BLOCK_SEL =
+    BLOCKS.map((b) => b.sel).join(",") +
+    ",figure.evidence,.petition,main p,.note,a.btn,.btn-row,h2,h3," +
+    "ol.demands > li,ol.ladder > li,ul.plain > li,.card,.reb-row,section,figcaption";
 
   const nameFor = (el) => {
-    for (const b of BLOCKS) if (el.matches(b.sel)) return b.name;
     if (el.matches("figure.evidence")) return "Evidence";
     if (el.matches(".petition")) return "Petition";
+    if (el.matches(".note")) return "Note";
+    if (el.matches("a.btn")) return "Button";
+    if (el.matches(".btn-row")) return "Button row";
+    if (el.matches("h2")) return "Heading";
+    if (el.matches("h3")) return "Sub-heading";
+    if (el.matches("p.eyebrow")) return "Eyebrow";
+    for (const b of BLOCKS) if (el.matches(b.sel)) return b.name;
+    if (el.matches("p")) return "Paragraph";
+    if (el.matches("li")) return "List item";
     return "Block";
   };
 
@@ -475,8 +486,22 @@
   const place = () => {
     if (!active || !active.isConnected) return setActive(null);
     const r = active.getBoundingClientRect();
-    tools.style.top = `${Math.max(6, r.top - 32)}px`;
-    tools.style.left = `${Math.max(6, Math.min(r.right - tools.offsetWidth, innerWidth - tools.offsetWidth - 6))}px`;
+    const tw = tools.offsetWidth || 200;
+    const th = tools.offsetHeight || 30;
+    let top, left;
+
+    if (r.height < 52) {
+      // Short or inline block: sit beside it so the controls never cover it.
+      top = r.top + r.height / 2 - th / 2;
+      left = r.right + 8;
+      if (left + tw > innerWidth - 6) left = r.left - tw - 8;
+    } else {
+      top = r.top - th - 6;
+      left = r.right - tw;
+    }
+    if (top < 6) top = Math.min(r.bottom + 6, innerHeight - th - 6);
+    tools.style.top = `${Math.max(6, Math.min(top, innerHeight - th - 6))}px`;
+    tools.style.left = `${Math.max(6, Math.min(left, innerWidth - tw - 6))}px`;
   };
 
   const setActive = (el) => {
@@ -486,13 +511,32 @@
     el.classList.add("ed-active");
     tools.querySelector("#ed-bt-lbl").textContent = nameFor(el);
     tools.querySelector('[data-op="link"]').style.display = el.matches("a") ? "" : "none";
+    tools.classList.toggle("pinned", locked);
     tools.classList.add("show");
     place();
   };
 
+  let hoverTimer = null;
+  let locked = false;
+
   main.addEventListener("mouseover", (e) => {
+    if (locked) return;
     const b = e.target.closest(BLOCK_SEL);
-    if (b && main.contains(b) && b !== active) setActive(b);
+    if (!b || !main.contains(b) || b === active) return;
+    clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(() => setActive(b), 110);
+  });
+  // Moving the pointer onto the controls must never change what they act on.
+  tools.addEventListener("mouseenter", () => clearTimeout(hoverTimer));
+
+  // Click a block to pin it: nothing steals the selection until you unpin.
+  main.addEventListener("click", (e) => {
+    if (e.target.closest("a")) return;
+    const b = e.target.closest(BLOCK_SEL);
+    if (!b || !main.contains(b)) return;
+    clearTimeout(hoverTimer);
+    locked = true;
+    setActive(b);
   });
   addEventListener("scroll", place, { passive: true });
   addEventListener("resize", place);
@@ -535,18 +579,25 @@
       return;
     }
 
-    if (op === "del") {
-      const label = nameFor(active);
-      const big = active.matches("section, .petition, figure.evidence");
-      if (big && !confirm(`Delete this whole ${label.toLowerCase()}? UNDO BLOCK will bring it back.`)) return;
-      snapshot();
-      const gone = active;
-      setActive(null);
-      gone.remove();
-      markDirty();
-      if (panel.classList.contains("open")) renderPanel();
-    }
+    if (op === "del") removeActive();
   });
+
+  function removeActive() {
+    if (!active || !main.contains(active)) return;
+    const big = active.matches("section, .petition, figure.evidence, .card, .reb-row");
+    if (big && !confirm(`Delete this ${nameFor(active).toLowerCase()}? UNDO BLOCK brings it back.`)) return;
+    snapshot();
+    const gone = active;
+    // Land on the neighbour so repeated deletes need no re-aiming.
+    const next =
+      gone.nextElementSibling?.closest(BLOCK_SEL) ||
+      gone.previousElementSibling?.closest(BLOCK_SEL) ||
+      gone.parentElement?.closest(BLOCK_SEL);
+    gone.remove();
+    markDirty();
+    setActive(next && main.contains(next) ? next : null);
+    if (panel.classList.contains("open")) renderPanel();
+  }
 
   /* ---- insert palette ---- */
   const palette = document.createElement("div");
@@ -590,7 +641,13 @@
 
   addBtn.addEventListener("click", () => togglePalette(!palette.classList.contains("open")));
   undoBtn.addEventListener("click", undo);
-  addEventListener("keydown", (e) => { if (e.key === "Escape") { togglePalette(false); setActive(null); } });
+  addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { togglePalette(false); locked = false; setActive(null); }
+    if ((e.metaKey || e.ctrlKey) && (e.key === "Backspace" || e.key === "Delete")) {
+      e.preventDefault();
+      removeActive();
+    }
+  });
 
   try { document.execCommand("styleWithCSS", false, false); } catch {}
   arm();
