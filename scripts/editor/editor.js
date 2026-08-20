@@ -329,7 +329,7 @@
     <button class="ed-b" id="ed-share">LINK PREVIEW</button>
     <span class="sp"></span>
     <span class="ed-note" id="ed-status">click any text to edit</span>
-    <a class="ed-b" id="ed-live" href="https://schappiplays.github.io/protest/" target="_blank" rel="noopener" hidden>VIEW LIVE</a>
+    <a class="ed-b" id="ed-live" href="https://schappistudios.github.io/protest/" target="_blank" rel="noopener" hidden>VIEW LIVE</a>
     <button class="ed-b" id="ed-pub" title="When on, saving also commits and pushes to the live site">PUBLISH: ON</button>
     <button class="ed-b go" id="ed-save" disabled>SAVE</button>`;
   document.body.append(bar);
