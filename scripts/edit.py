@@ -28,7 +28,7 @@ EDITOR = ROOT / "scripts" / "editor"
 INDEX = ROOT / "index.html"
 BACKUPS = ROOT / ".backups"
 PORT = 4000
-LIVE_URL = "https://schappistudios.github.io/protest/"
+LIVE_URL = "https://schappi-studios.github.io/protest/"
 
 INJECT = (
     '<link rel="stylesheet" href="/__editor/editor.css">\n'
@@ -45,7 +45,7 @@ def git(*args, timeout=90):
 def publish():
     """Commit whatever changed and push it. Never raises — the caller reports."""
     try:
-        name = git("config", "user.name").stdout.strip() or "SchappiStudios"
+        name = git("config", "user.name").stdout.strip() or "LucasSchappi"
         email = git("config", "user.email").stdout.strip() or "marcus@chickcom.com"
 
         if git("add", "-A").returncode:

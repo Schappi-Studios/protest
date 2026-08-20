@@ -3,7 +3,7 @@
 A student campaign site: our school blocked every AI tool except Microsoft Copilot,
 and we'd like the decision made properly — in writing, by a person.
 
-**Live site:** https://schappistudios.github.io/protest/
+**Live site:** https://schappi-studios.github.io/protest/
 
 Static HTML/CSS/JS. No build step, no dependencies, no framework.
 
