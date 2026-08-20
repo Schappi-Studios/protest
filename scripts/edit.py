@@ -10,6 +10,7 @@ index.html, keeping a timestamped backup in .backups/ first.
 Nothing in here ships to the live site — the editor is injected by this
 server only. The published page never loads it.
 """
+import errno
 import http.server
 import json
 import pathlib
@@ -214,8 +215,25 @@ class Server(socketserver.ThreadingTCPServer):
     daemon_threads = True
 
 
+def start():
+    """Bind the first free port from PORT upwards, so a stale copy never blocks you."""
+    for port in range(PORT, PORT + 10):
+        try:
+            return Server(("127.0.0.1", port), Handler), port
+        except OSError as exc:
+            if exc.errno != errno.EADDRINUSE:
+                raise
+            if port == PORT:
+                print(f"\n  Port {PORT} is already in use — something is still running.")
+                print(f"  To reclaim it:  lsof -ti :{PORT} | xargs kill -9")
+                print("  Trying the next port instead…")
+    print(f"\n  Ports {PORT}-{PORT + 9} are all in use. Free one and try again.\n")
+    raise SystemExit(1)
+
+
 if __name__ == "__main__":
-    url = f"http://localhost:{PORT}/"
+    httpd, port = start()
+    url = f"http://localhost:{port}/"
     print(f"\n  Editing {INDEX.name}")
     print(f"  {url}")
     print("  Backups land in .backups/ — Ctrl+C to stop.\n")
@@ -224,7 +242,7 @@ if __name__ == "__main__":
     except Exception:
         pass
     try:
-        with Server(("127.0.0.1", PORT), Handler) as httpd:
+        with httpd:
             httpd.serve_forever()
     except KeyboardInterrupt:
         print("\n  Stopped.\n")
