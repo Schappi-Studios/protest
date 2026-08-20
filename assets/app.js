@@ -6,7 +6,7 @@
 const CONFIG = {
   // 1. Your school's name. Fills every "SCHOOL NAME" blank on the page.
   //    Leave "" to keep the blanks showing while you're still drafting.
-  school: "",
+  school: "Catholic Schools Broken Bay",
 
   // 2. Signature collection. Both options are free, in-page (nobody leaves
   //    the site), and owned by neither Microsoft nor Google.

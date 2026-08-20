@@ -118,6 +118,29 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(-
 .fields dd .bad{color:var(--denied); font-weight:600}
 .fields dd .ok{color:var(--allow); font-weight:600}
 
+/* ---------- evidence figure ---------- */
+.evidence{
+  margin:0; background:var(--paper); border:1px solid var(--rule);
+  border-top:7px solid var(--denied); box-shadow:var(--shadow); border-radius:2px;
+}
+.evidence img{display:block; width:100%; height:auto; border-bottom:1px solid var(--rule-soft)}
+.evidence figcaption{
+  display:flex; flex-direction:column; gap:8px; padding:16px 20px;
+  font-family:"IBM Plex Mono",monospace; font-size:11.5px; line-height:1.6; color:var(--muted);
+}
+.evidence figcaption code{font-size:11.5px; color:var(--ink); word-break:break-all}
+.ev-lbl{
+  font-size:10px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--denied);
+}
+/* the screenshot is a light-mode capture; keep it from glaring on a dark ground */
+:root[data-theme="dark"] .evidence img{filter:brightness(.88) contrast(1.03)}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .evidence img{filter:brightness(.88) contrast(1.03)}
+}
+
+.readout .fields{border-top:0; padding-top:0}
+.readout .fields dd{color:var(--ink)}
+
 /* ---------- sections ---------- */
 section{padding:64px 0 0}
 .sec-hd{display:flex; flex-direction:column; gap:12px; margin-bottom:26px}
